@@ -1,12 +1,14 @@
-import pandas as pd
 import numpy as np
-import graphviz
-import matplotlib.pyplot as plt
-import itertools
-from sklearn import tree
-from sklearn.base import TransformerMixin
-from sklearn.model_selection import train_test_split, KFold, cross_val_score
+import pandas as pd
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
+import scikitplot as skplt
+from sklearn.base import TransformerMixin
 
 initial_data = pd.read_csv("../hmeq-data/hmeq.csv")
 manipulated_data = pd.read_csv("../hmeq-data/hmeq.csv")
@@ -47,36 +49,11 @@ hmeq_features = transformed_X.drop(columns=["BAD", "JOB", "REASON"])
 hmeq_target = transformed_X["BAD"]
 
 #print hmeq_features
-#print hmeq_target
 
+# Set up Initial NN Structure
+clf = MLPClassifier(solver='sgd', hidden_layer_sizes=(100, 100), max_iter=5000, alpha=1e-5)
 train, test, train_labels, test_labels = train_test_split(hmeq_features, hmeq_target, test_size=0.33, random_state=42)
-#print "Training Data", train, "Training Labels", train_labels
-
-# Create Initial Classifier - Decision Tree
-clf = tree.DecisionTreeClassifier()
-fitted_clf = clf.fit(train, train_labels)
 
 # Cross Validation
-scores = cross_val_score(fitted_clf, hmeq_features, hmeq_target, cv=5)
+scores = cross_val_score(clf, hmeq_features, hmeq_target, cv=5)
 print "Cross Validation Scores: ", scores
-
-# Accuracy and Precision Scores
-training_prediction = fitted_clf.predict(train)
-training_accuracy = accuracy_score(training_prediction, train_labels) * 100
-print "Training Accuracy: ", training_accuracy
-
-testing_prediction = fitted_clf.predict(test)
-testing_accuracy = accuracy_score(testing_prediction, test_labels) * 100
-print "Testing Accuracy: ", testing_accuracy
-
-# Precision Outcomes
-precision = precision_score(test_labels, testing_prediction, average="weighted")*100
-print "Precision: ", precision
-
-# GraphViz Output
-viz_data = tree.export_graphviz(fitted_clf, out_file=None)
-graph = graphviz.Source(viz_data)
-# graph.render("HMEQ_Decision_Tree")
-
-#with open("decisionTree1.txt", 'w') as f:
-#    f = tree.export_graphviz(fitted_clf, out_file=f)
