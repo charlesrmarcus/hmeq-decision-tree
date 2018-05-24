@@ -7,6 +7,8 @@ from sklearn import tree
 from sklearn.base import TransformerMixin
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.metrics import accuracy_score, precision_score
+from sklearn.decomposition import PCA, FastICA, NMF
+from sklearn.random_projection import SparseRandomProjection
 
 initial_data = pd.read_csv("../hmeq-data/hmeq.csv")
 manipulated_data = pd.read_csv("../hmeq-data/hmeq.csv")
@@ -48,6 +50,12 @@ hmeq_target = transformed_X["BAD"]
 
 #print hmeq_features
 #print hmeq_target
+
+# Dimensionality Reduction
+pca_hmeq_features = PCA(n_components=2).fit_transform(hmeq_features)
+ica_hmeq_features = FastICA(n_components=2, max_iter=1000).fit_transform(hmeq_features)
+nmf_hmeq_features = NMF(n_components=2).fit_transform(hmeq_features)
+srp_hmeq_features = SparseRandomProjection(n_components=2).fit_transform(hmeq_features)
 
 train, test, train_labels, test_labels = train_test_split(hmeq_features, hmeq_target, test_size=0.33, random_state=42)
 #print "Training Data", train, "Training Labels", train_labels
