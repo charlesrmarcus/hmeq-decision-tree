@@ -136,4 +136,84 @@ plt.plot(components, accuracies)
 #### Fast ICA ####
 ica = decomposition.FastICA(n_components=10, algorithm='parallel', tol=1e+1, max_iter=1000000)
 S_ = ica.fit_transform(hmeq_features)
-print("Kurtosis: " + str(kurtosis(S_)))
+#print("Kurtosis: " + str(kurtosis(S_)))
+
+#### NMF ####
+pipe = Pipeline([
+    ('reduce_dim', PCA()),
+    ('classify', LinearSVC())
+])
+
+N_FEATURES_OPTIONS = [2, 4, 8]
+C_OPTIONS = [1, 10, 100, 1000]
+param_grid = [
+    {
+        'reduce_dim': [PCA(iterated_power=7), FastICA(), SparseRandomProjection(), NMF()],
+        'reduce_dim__n_components': N_FEATURES_OPTIONS,
+        'classify__C': C_OPTIONS
+    },
+]
+
+reducer_labels = ['PCA', 'ICA', 'Random Projection', 'NMF']
+
+grid = GridSearchCV(pipe, cv=3, n_jobs=1, param_grid=param_grid)
+grid.fit(hmeq_features, hmeq_target)
+
+mean_scores = np.array(grid.cv_results_['mean_test_score'])
+# scores are in the order of param_grid iteration, which is alphabetical
+mean_scores = mean_scores.reshape(len(C_OPTIONS), -1, len(N_FEATURES_OPTIONS))
+# select score for best C
+mean_scores = mean_scores.max(axis=0)
+bar_offsets = (np.arange(len(N_FEATURES_OPTIONS)) *
+               (len(reducer_labels) + 1) + .5)
+
+plt.figure()
+COLORS = 'bgrcmyk'
+for i, (label, reducer_scores) in enumerate(zip(reducer_labels, mean_scores)):
+    plt.bar(bar_offsets + i, reducer_scores, label=label, color=COLORS[i])
+
+plt.title("Comparing feature reduction techniques - HMEQ")
+plt.xlabel('Reduced number of features')
+plt.xticks(bar_offsets + len(reducer_labels) / 2, N_FEATURES_OPTIONS)
+plt.ylabel('HMEQ classification accuracy')
+plt.ylim((0, 1))
+plt.legend(loc='upper left')
+plt.show()
+
+# Accuracy Model for NMF
+accuracies = []
+# Change to Match Num of Features in Dataset
+components = np.int32(np.linspace(2, 10, 2))
+
+# Create Linear SVC Model
+model = LinearSVC()
+model.fit(train, train_labels)
+baseline = accuracy_score(model.predict(test), test_labels)
+
+# loop over the projection sizes
+for comp in components:
+    # create the random projection
+    nmf = NMF(n_components=comp)
+    X = nmf.fit_transform(train)
+
+    # train a classifier on the sparse random projection
+    model = LinearSVC()
+    model.fit(X, train_labels)
+
+    # evaluate the model and update the list of accuracies
+    transformed_test = nmf.transform(test)
+    accuracies.append(accuracy_score(model.predict(transformed_test), test_labels))
+
+# create the figure
+plt.figure()
+plt.suptitle("Accuracy of NMF on BRC")
+plt.xlabel("# of Components")
+plt.ylabel("Accuracy")
+# Change to Match Num of Features in Dataset
+plt.xlim([2, 10])
+plt.ylim([0, 1.0])
+
+# plot the baseline and random projection accuracies
+plt.plot(components, [baseline] * len(accuracies), color="r")
+plt.plot(components, accuracies)
+plt.show()

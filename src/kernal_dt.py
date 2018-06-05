@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import itertools
 from sklearn import tree
 from sklearn.base import TransformerMixin
-from sklearn.model_selection import train_test_split, KFold, cross_val_score
-from sklearn.metrics import accuracy_score, precision_score
+from sklearn.model_selection import GridSearchCV, train_test_split, KFold, cross_val_score
+from sklearn.metrics import make_scorer, accuracy_score, precision_score
 from sklearn.decomposition import PCA, FastICA, NMF
 from sklearn.random_projection import SparseRandomProjection
 
@@ -57,15 +57,28 @@ ica_hmeq_features = FastICA(n_components=2, max_iter=1000).fit_transform(hmeq_fe
 nmf_hmeq_features = NMF(n_components=2).fit_transform(hmeq_features)
 srp_hmeq_features = SparseRandomProjection(n_components=2).fit_transform(hmeq_features)
 
-train, test, train_labels, test_labels = train_test_split(hmeq_features, hmeq_target, test_size=0.33, random_state=42)
+# Uncomment correct data split dependent on the type of Dimensionality Reduction
+#train, test, train_labels, test_labels = train_test_split(hmeq_features, hmeq_target, test_size=0.33, random_state=42)
 #print "Training Data", train, "Training Labels", train_labels
 
-# Create Initial Classifier - Decision Tree
-clf = tree.DecisionTreeClassifier()
-fitted_clf = clf.fit(train, train_labels)
+#train, test, train_labels, test_labels = train_test_split(pca_hmeq_features, hmeq_target, test_size=0.33, random_state=42)
+train, test, train_labels, test_labels = train_test_split(ica_hmeq_features, hmeq_target, test_size=0.33, random_state=42)
+#train, test, train_labels, test_labels = train_test_split(nmf_hmeq_features, hmeq_target, test_size=0.33, random_state=42)
+#train, test, train_labels, test_labels = train_test_split(srp_hmeq_features, hmeq_target, test_size=0.33, random_state=42)
 
-# Cross Validation
-scores = cross_val_score(fitted_clf, hmeq_features, hmeq_target, cv=5)
+# GridSearchCV for Optimal Parameters
+#parameters = {'criterion': ["gini", "entropy"], 'min_samples_leaf': np.arange(1, 10),
+#              'max_depth': np.arange(1, 10)}
+#clf = GridSearchCV(tree.DecisionTreeClassifier(), parameters, cv=5,
+#                   scoring=make_scorer(accuracy_score))
+
+# Create Initial Classifier - Decision Tree
+clf = tree.DecisionTreeClassifier(criterion='gini', max_depth=8, min_samples_leaf=1)
+fitted_clf = clf.fit(train, train_labels)
+#print fitted_clf.best_params_
+
+# Cross Validation, change features if using reduced space
+scores = cross_val_score(fitted_clf, ica_hmeq_features, hmeq_target, cv=5)
 print "Cross Validation Scores: ", scores
 
 # Accuracy and Precision Scores
@@ -82,8 +95,8 @@ precision = precision_score(test_labels, testing_prediction, average="weighted")
 print "Precision: ", precision
 
 # GraphViz Output
-viz_data = tree.export_graphviz(fitted_clf, out_file=None)
-graph = graphviz.Source(viz_data)
+#viz_data = tree.export_graphviz(fitted_clf, out_file=None)
+#graph = graphviz.Source(viz_data)
 # graph.render("HMEQ_Decision_Tree")
 
 #with open("decisionTree1.txt", 'w') as f:
